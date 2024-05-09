@@ -5,12 +5,7 @@ import styles from "./page.module.scss";
 import { Dispatch, MouseEventHandler, SetStateAction, useState } from "react";
 import assert from "assert";
 
-const floor_count = 5;
-
-const enum ButtonState {
-  Idle,
-  Active,
-}
+const floorCount = 10;
 
 const enum ElevatorDirection {
   None,
@@ -20,31 +15,40 @@ const enum ElevatorDirection {
 }
 
 function ElevatorButton({
-  button_direction,
-  buttons_states,
-  set_active_state,
+  buttonDirection: buttonDirection,
+  buttonsStates: buttonsStates,
+  setActiveState: setActiveState,
+  setFloorToVisit: setFloorToVisit,
+  floor,
 }: {
-  button_direction: ElevatorDirection;
-  buttons_states: ElevatorDirection;
-  set_active_state: Dispatch<SetStateAction<ElevatorDirection>>;
+  buttonDirection: ElevatorDirection;
+  buttonsStates: ElevatorDirection;
+  setActiveState: Dispatch<SetStateAction<ElevatorDirection>>;
+  setFloorToVisit: Dispatch<SetStateAction<ElevatorDirection[]>>;
+  floor: number;
 }) {
   assert(
-    button_direction === ElevatorDirection.Up ||
-      button_direction === ElevatorDirection.Down
+    buttonDirection === ElevatorDirection.Up ||
+      buttonDirection === ElevatorDirection.Down
   );
 
-  const text = button_direction === ElevatorDirection.Up ? "⮝" : "⮟";
-  const class_name =
-    buttons_states & button_direction
+  const text = buttonDirection === ElevatorDirection.Up ? "⮝" : "⮟";
+  const className =
+    buttonsStates & buttonDirection
       ? styles.elevator_button_active
       : styles.elevator_button;
 
-  function click_handler() {
-    set_active_state((prev_state) => prev_state | button_direction);
+  function clickHandler() {
+    setActiveState((prevState) => prevState | buttonDirection);
+    setFloorToVisit((prevState) => {
+      const newState = [...prevState];
+      newState[floor] |= buttonDirection;
+      return newState;
+    });
   }
 
   return (
-    <button className={class_name} onClick={click_handler}>
+    <button className={className} onClick={clickHandler}>
       {text}
     </button>
   );
@@ -52,76 +56,95 @@ function ElevatorButton({
 
 function ButtonPanel({
   floor,
-  current_floor,
-  elevator_direction,
+  currentFloor,
+  elevatorDirection,
+  setFloorsToVisit: setFloorToVisit,
 }: {
   floor: number;
-  current_floor: number;
-  elevator_direction: ElevatorDirection;
+  currentFloor: number;
+  elevatorDirection: ElevatorDirection;
+  setFloorsToVisit: Dispatch<SetStateAction<ElevatorDirection[]>>;
 }) {
-  const [active_dir_button, set_active_dir_button] =
-    useState<ElevatorDirection>(ElevatorDirection.None);
+  const [activeDirButton, setActiveDirButton] = useState<ElevatorDirection>(
+    ElevatorDirection.None
+  );
 
-  if (floor === current_floor && elevator_direction & active_dir_button) {
-    set_active_dir_button((prev_state) => prev_state & ~elevator_direction);
+  if (floor === currentFloor && elevatorDirection & activeDirButton) {
+    setActiveDirButton((prevState) => prevState & ~elevatorDirection);
   }
 
   return (
     <div className={styles.button_panel}>
-      {floor !== floor_count - 1 && (
+      {floor !== floorCount - 1 && (
         <ElevatorButton
-          button_direction={ElevatorDirection.Up}
-          buttons_states={active_dir_button}
-          set_active_state={set_active_dir_button}
+          buttonDirection={ElevatorDirection.Up}
+          buttonsStates={activeDirButton}
+          setActiveState={setActiveDirButton}
+          setFloorToVisit={setFloorToVisit}
+          floor={floor}
         />
       )}
       {floor !== 0 && (
         <ElevatorButton
-          buttons_states={active_dir_button}
-          button_direction={ElevatorDirection.Down}
-          set_active_state={set_active_dir_button}
+          buttonsStates={activeDirButton}
+          buttonDirection={ElevatorDirection.Down}
+          setActiveState={setActiveDirButton}
+          setFloorToVisit={setFloorToVisit}
+          floor={floor}
         />
       )}
       <span className={styles.current_floor_indicator}>
-        {current_floor}
-        {elevator_direction === ElevatorDirection.Up && " ⮝"}
-        {elevator_direction === ElevatorDirection.Down && " ⮟"}
+        {currentFloor}
+        {elevatorDirection === ElevatorDirection.Up && " ⮝"}
+        {elevatorDirection === ElevatorDirection.Down && " ⮟"}
       </span>
     </div>
   );
 }
 
+function ElevatorOpen() {
+  return (
+    <Image src={"/open.jpg"} width={100} height={100} alt={"Open elevator"} />
+  );
+}
+
+function ElevatorClosed() {
+  return (
+    <Image
+      src={"/closed.jpg"}
+      width={100}
+      height={100}
+      alt={"Closed elevator"}
+    />
+  );
+}
+
 function Elevator({
   floor,
-  current_floor,
-  elevator_direction,
+  currentFloor,
+  elevatorDirection: elevatorDirection,
+  setFloorsToVisit: setFloorsToVisit,
+  floorsToVisit,
 }: {
   floor: number;
-  current_floor: number;
-  elevator_direction: ElevatorDirection;
+  currentFloor: number;
+  elevatorDirection: ElevatorDirection;
+  setFloorsToVisit: Dispatch<SetStateAction<ElevatorDirection[]>>;
+  floorsToVisit: ElevatorDirection[];
 }) {
   return (
     <div className={styles.elevator_container}>
-      {current_floor == floor && (
-        <Image
-          src={"/open.jpg"}
-          width={100}
-          height={100}
-          alt={"Open elevator"}
-        />
-      )}
-      {current_floor != floor && (
-        <Image
-          src={"/closed.jpg"}
-          width={100}
-          height={100}
-          alt={"Closed elevator"}
-        />
+      {currentFloor == floor &&
+      floorsToVisit[currentFloor] & elevatorDirection ? (
+        <ElevatorOpen />
+      ) : (
+        <ElevatorClosed />
       )}
       <ButtonPanel
         floor={floor}
-        current_floor={current_floor}
-        elevator_direction={elevator_direction}
+        currentFloor={currentFloor}
+        elevatorDirection={elevatorDirection}
+        setFloorsToVisit={setFloorsToVisit}
       />
       <span>Floor {floor}</span>
     </div>
@@ -130,25 +153,23 @@ function Elevator({
 
 function ElevatorShaft() {
   const [elevatorCurrentFloor, setElevatorCurrentFloor] = useState(0);
-  const [elevatorDirection, setElevatorDirection] = useState(
+  const [elevatorDirection, setElevatorDirection] = useState<ElevatorDirection>(
     ElevatorDirection.Up
   );
-  const [floorsToVisit, setFloorsToVisit] = useState([
-    ElevatorDirection.None,
-    ElevatorDirection.None,
-    ElevatorDirection.None,
-    ElevatorDirection.None,
-    ElevatorDirection.None,
-  ]);
+  const [floorsToVisit, setFloorsToVisit] = useState<ElevatorDirection[]>(
+    Array(floorCount).fill(ElevatorDirection.None)
+  );
 
   const elevators = [];
 
-  for (let i = floor_count - 1; i >= 0; i--) {
+  for (let i = floorCount - 1; i >= 0; i--) {
     elevators.push(
       <Elevator
         floor={i}
-        current_floor={elevatorCurrentFloor}
-        elevator_direction={elevatorDirection}
+        currentFloor={elevatorCurrentFloor}
+        elevatorDirection={elevatorDirection}
+        setFloorsToVisit={setFloorsToVisit}
+        floorsToVisit={floorsToVisit}
       />
     );
   }
@@ -156,7 +177,7 @@ function ElevatorShaft() {
   // Move the elevator to the next floor after 2 seconds
   setTimeout(() => {
     if (elevatorDirection === ElevatorDirection.Up) {
-      if (elevatorCurrentFloor < floor_count - 1) {
+      if (elevatorCurrentFloor < floorCount - 1) {
         setElevatorCurrentFloor(elevatorCurrentFloor + 1);
       } else {
         setElevatorDirection(ElevatorDirection.Down);
@@ -167,6 +188,14 @@ function ElevatorShaft() {
       } else {
         setElevatorDirection(ElevatorDirection.Up);
       }
+    }
+
+    if (floorsToVisit[elevatorCurrentFloor] & elevatorDirection) {
+      setFloorsToVisit((prevState) => {
+        const newState = [...prevState];
+        newState[elevatorCurrentFloor] &= ~elevatorDirection;
+        return newState;
+      });
     }
   }, 2000);
 
