@@ -5,7 +5,7 @@ import styles from "./page.module.scss";
 import { Dispatch, MouseEventHandler, SetStateAction, useState } from "react";
 import assert from "assert";
 
-const floorCount = 10;
+const floorCount = 6;
 
 const enum ElevatorDirection {
   None,
@@ -14,17 +14,29 @@ const enum ElevatorDirection {
   Both,
 }
 
+/**
+ * Renders an elevator button with the specified direction and floor number.
+ *
+ * TODO: do not take `setActiveState`, `setFloorsToVisit` and `floor` as arguments.
+ *
+ * @param buttonDirection - The direction of the elevator button (Up or Down).
+ * @param buttonsStates - The current state of the elevator buttons.
+ * @param setActiveState - A function to set the active state of the elevator buttons.
+ * @param setFloorsToVisit - A function to set the floors to visit in the elevator.
+ * @param floor - The floor number associated with the button.
+ * @returns The rendered elevator button component.
+ */
 function ElevatorButton({
-  buttonDirection: buttonDirection,
-  buttonsStates: buttonsStates,
-  setActiveState: setActiveState,
-  setFloorToVisit: setFloorToVisit,
+  buttonDirection,
+  buttonsStates,
+  setActiveState,
+  setFloorsToVisit,
   floor,
 }: {
   buttonDirection: ElevatorDirection;
   buttonsStates: ElevatorDirection;
   setActiveState: Dispatch<SetStateAction<ElevatorDirection>>;
-  setFloorToVisit: Dispatch<SetStateAction<ElevatorDirection[]>>;
+  setFloorsToVisit: Dispatch<SetStateAction<ElevatorDirection[]>>;
   floor: number;
 }) {
   assert(
@@ -40,7 +52,7 @@ function ElevatorButton({
 
   function clickHandler() {
     setActiveState((prevState) => prevState | buttonDirection);
-    setFloorToVisit((prevState) => {
+    setFloorsToVisit((prevState) => {
       const newState = [...prevState];
       newState[floor] |= buttonDirection;
       return newState;
@@ -55,13 +67,13 @@ function ElevatorButton({
 }
 
 function ButtonPanel({
-  floor,
-  currentFloor,
+  floorLevel,
+  carLevel,
   elevatorDirection,
-  setFloorsToVisit: setFloorToVisit,
+  setFloorsToVisit,
 }: {
-  floor: number;
-  currentFloor: number;
+  floorLevel: number;
+  carLevel: number;
   elevatorDirection: ElevatorDirection;
   setFloorsToVisit: Dispatch<SetStateAction<ElevatorDirection[]>>;
 }) {
@@ -69,32 +81,32 @@ function ButtonPanel({
     ElevatorDirection.None
   );
 
-  if (floor === currentFloor && elevatorDirection & activeDirButton) {
+  if (floorLevel === carLevel && elevatorDirection & activeDirButton) {
     setActiveDirButton((prevState) => prevState & ~elevatorDirection);
   }
 
   return (
     <div className={styles.button_panel}>
-      {floor !== floorCount - 1 && (
+      {floorLevel !== floorCount - 1 && (
         <ElevatorButton
           buttonDirection={ElevatorDirection.Up}
           buttonsStates={activeDirButton}
           setActiveState={setActiveDirButton}
-          setFloorToVisit={setFloorToVisit}
-          floor={floor}
+          setFloorsToVisit={setFloorsToVisit}
+          floor={floorLevel}
         />
       )}
-      {floor !== 0 && (
+      {floorLevel !== 0 && (
         <ElevatorButton
           buttonsStates={activeDirButton}
           buttonDirection={ElevatorDirection.Down}
           setActiveState={setActiveDirButton}
-          setFloorToVisit={setFloorToVisit}
-          floor={floor}
+          setFloorsToVisit={setFloorsToVisit}
+          floor={floorLevel}
         />
       )}
       <span className={styles.current_floor_indicator}>
-        {currentFloor}
+        {carLevel}
         {elevatorDirection === ElevatorDirection.Up && " ⮝"}
         {elevatorDirection === ElevatorDirection.Down && " ⮟"}
       </span>
@@ -119,34 +131,33 @@ function ElevatorClosed() {
   );
 }
 
-function Elevator({
-  floor,
-  currentFloor,
-  elevatorDirection: elevatorDirection,
-  setFloorsToVisit: setFloorsToVisit,
+function Door({
+  doorLevel,
+  carLevel,
+  elevatorDirection,
+  setFloorsToVisit,
   floorsToVisit,
 }: {
-  floor: number;
-  currentFloor: number;
+  doorLevel: number;
+  carLevel: number;
   elevatorDirection: ElevatorDirection;
   setFloorsToVisit: Dispatch<SetStateAction<ElevatorDirection[]>>;
   floorsToVisit: ElevatorDirection[];
 }) {
   return (
     <div className={styles.elevator_container}>
-      {currentFloor == floor &&
-      floorsToVisit[currentFloor] & elevatorDirection ? (
+      {carLevel == doorLevel && floorsToVisit[carLevel] & elevatorDirection ? (
         <ElevatorOpen />
       ) : (
         <ElevatorClosed />
       )}
       <ButtonPanel
-        floor={floor}
-        currentFloor={currentFloor}
+        floorLevel={doorLevel}
+        carLevel={carLevel}
         elevatorDirection={elevatorDirection}
         setFloorsToVisit={setFloorsToVisit}
       />
-      <span>Floor {floor}</span>
+      <span>Floor {doorLevel}</span>
     </div>
   );
 }
@@ -160,13 +171,13 @@ function ElevatorShaft() {
     Array(floorCount).fill(ElevatorDirection.None)
   );
 
-  const elevators = [];
+  const doors = [];
 
   for (let i = floorCount - 1; i >= 0; i--) {
-    elevators.push(
-      <Elevator
-        floor={i}
-        currentFloor={elevatorCurrentFloor}
+    doors.push(
+      <Door
+        doorLevel={i}
+        carLevel={elevatorCurrentFloor}
         elevatorDirection={elevatorDirection}
         setFloorsToVisit={setFloorsToVisit}
         floorsToVisit={floorsToVisit}
@@ -174,16 +185,40 @@ function ElevatorShaft() {
     );
   }
 
-  // Move the elevator to the next floor after 2 seconds
-  setTimeout(() => {
+  assert(doors.length === floorCount);
+  assert(elevatorDirection !== ElevatorDirection.Both);
+
+  function checkFloorsAbove() {
+    for (let i = elevatorCurrentFloor + 1; i < floorCount; i++) {
+      if (floorsToVisit[i]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function checkFloorsBelow() {
+    for (let i = elevatorCurrentFloor - 1; i >= 0; i--) {
+      if (floorsToVisit[i]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function checkFloors() {
+    return checkFloorsAbove() || checkFloorsBelow();
+  }
+
+  function moveElevator() {
     if (elevatorDirection === ElevatorDirection.Up) {
-      if (elevatorCurrentFloor < floorCount - 1) {
+      if (checkFloorsAbove()) {
         setElevatorCurrentFloor(elevatorCurrentFloor + 1);
       } else {
         setElevatorDirection(ElevatorDirection.Down);
       }
     } else if (elevatorDirection === ElevatorDirection.Down) {
-      if (elevatorCurrentFloor > 0) {
+      if (checkFloorsBelow()) {
         setElevatorCurrentFloor(elevatorCurrentFloor - 1);
       } else {
         setElevatorDirection(ElevatorDirection.Up);
@@ -197,9 +232,14 @@ function ElevatorShaft() {
         return newState;
       });
     }
+  }
+
+  // Move the elevator to the next floor after 2 seconds
+  setTimeout(() => {
+    moveElevator();
   }, 2000);
 
-  return elevators;
+  return doors;
 }
 
 export default function Home() {
