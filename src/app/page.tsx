@@ -247,12 +247,14 @@ function ElevatorShaft() {
     moveElevator();
   }, 2000);
 
-  return doors;
+  return <div>{doors}</div>;
 }
 
 export default function Home() {
   return (
     <main className={styles.main}>
+      <ElevatorShaft />
+      <ElevatorShaft />
       <ElevatorShaft />
     </main>
   );

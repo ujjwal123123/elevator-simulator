@@ -22,7 +22,7 @@ div.elevator_container {
   flex-direction: row;
 }
 
-div.button_panel{
+div.button_panel {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -34,5 +34,9 @@ div.button_panel{
 span.current_floor_indicator {
   font-size: 14px;
   font-weight: 800;
-  font-family: 'monospace';
+  font-family: "monospace";
+}
+
+main.main {
+  display: flex;
 }
