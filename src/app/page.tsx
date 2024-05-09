@@ -165,7 +165,7 @@ function Door({
 function ElevatorShaft() {
   const [elevatorCurrentFloor, setElevatorCurrentFloor] = useState(0);
   const [elevatorDirection, setElevatorDirection] = useState<ElevatorDirection>(
-    ElevatorDirection.Up
+    ElevatorDirection.Both
   );
   const [floorsToVisit, setFloorsToVisit] = useState<ElevatorDirection[]>(
     Array(floorCount).fill(ElevatorDirection.None)
@@ -186,7 +186,7 @@ function ElevatorShaft() {
   }
 
   assert(doors.length === floorCount);
-  assert(elevatorDirection !== ElevatorDirection.Both);
+  assert(elevatorDirection !== ElevatorDirection.None);
 
   function checkFloorsAbove() {
     for (let i = elevatorCurrentFloor + 1; i < floorCount; i++) {
@@ -206,22 +206,30 @@ function ElevatorShaft() {
     return false;
   }
 
-  function checkFloors() {
-    return checkFloorsAbove() || checkFloorsBelow();
-  }
-
   function moveElevator() {
-    if (elevatorDirection === ElevatorDirection.Up) {
-      if (checkFloorsAbove()) {
-        setElevatorCurrentFloor(elevatorCurrentFloor + 1);
-      } else {
+    const floorsAbove = checkFloorsAbove();
+    const floorsBelow = checkFloorsBelow();
+
+    if (elevatorDirection === ElevatorDirection.Both) {
+      if (floorsAbove) {
+        setElevatorDirection(ElevatorDirection.Up);
+      }
+      if (floorsBelow) {
         setElevatorDirection(ElevatorDirection.Down);
       }
+    }
+
+    if (elevatorDirection === ElevatorDirection.Up) {
+      if (floorsAbove) {
+        setElevatorCurrentFloor(elevatorCurrentFloor + 1);
+      } else {
+        setElevatorDirection(ElevatorDirection.Both);
+      }
     } else if (elevatorDirection === ElevatorDirection.Down) {
-      if (checkFloorsBelow()) {
+      if (floorsBelow) {
         setElevatorCurrentFloor(elevatorCurrentFloor - 1);
       } else {
-        setElevatorDirection(ElevatorDirection.Up);
+        setElevatorDirection(ElevatorDirection.Both);
       }
     }
 
