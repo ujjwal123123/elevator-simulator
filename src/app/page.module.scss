@@ -1,0 +1,38 @@
+button.elevator_button {
+  border-radius: 100%;
+  border-width: 2px;
+  width: 25px;
+  height: 25px;
+  margin: 3px;
+  text-align: center;
+  border-color: grey;
+  box-shadow: none;
+}
+
+button.elevator_button_active {
+  @extend .elevator_button;
+
+  border-color: red;
+  color: red;
+}
+
+div.elevator_container {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+}
+
+div.button_panel{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 5px;
+  font-size: 12px;
+}
+
+span.current_floor_indicator {
+  font-size: 14px;
+  font-weight: 800;
+  font-family: 'monospace';
+}
