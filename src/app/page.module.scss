@@ -1,12 +1,13 @@
 button.elevator_button {
   border-radius: 100%;
   border-width: 2px;
-  width: 25px;
-  height: 25px;
+  width: 20px;
+  height: 20px;
   margin: 3px;
   text-align: center;
   border-color: grey;
   box-shadow: none;
+  padding: 0;
 }
 
 button.elevator_button_active {
@@ -40,3 +41,5 @@ span.current_floor_indicator {
 main.main {
   display: flex;
 }
+
+.elevator_control_panel {}

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import styles from "./page.module.scss";
-import { Dispatch, MouseEventHandler, SetStateAction, useState } from "react";
+import { Dispatch, SetStateAction, useState } from "react";
 import assert from "assert";
 
 const floorCount = 6;
@@ -17,7 +17,6 @@ const enum ElevatorDirection {
 /**
  * Renders an elevator button with the specified direction and floor number.
  *
- * TODO: do not take `setActiveState`, `setFloorsToVisit` and `floor` as arguments.
  *
  * @param buttonDirection - The direction of the elevator button (Up or Down).
  * @param buttonsStates - The current state of the elevator buttons.
@@ -114,20 +113,101 @@ function ButtonPanel({
   );
 }
 
-function ElevatorOpen() {
+function ElevatorControlPanel({
+  currentFloor,
+  setFloorsToVisit,
+}: {
+  currentFloor: number;
+  setFloorsToVisit: Dispatch<SetStateAction<ElevatorDirection[]>>;
+}) {
+  let buttons = [];
+
+  function clickHandler(floor: number) {
+    setFloorsToVisit((prevState) => {
+      const newState = [...prevState];
+
+      if (floor > currentFloor) {
+        newState[floor] |= ElevatorDirection.Up;
+      } else {
+        newState[floor] |= ElevatorDirection.Down;
+      }
+      return newState;
+    });
+  }
+
+  for (let i = 0; i < floorCount; i++) {
+    if (i == currentFloor) continue;
+    buttons.push(
+      <button
+        className={styles.elevator_button}
+        onClick={() => clickHandler(i)}
+      >
+        {i}
+      </button>
+    );
+  }
+
   return (
-    <Image src={"/open.jpg"} width={100} height={100} alt={"Open elevator"} />
+    <div
+      className={styles.elevator_control_panel}
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate( -50%, -50% )",
+        textAlign: "center",
+        backgroundColor: "lightgrey",
+        borderRadius: "10%",
+        width: "80%",
+      }}
+    >
+      {buttons}
+    </div>
   );
 }
 
-function ElevatorClosed() {
+function ElevatorOpen({
+  currentFloor,
+  setFloorsToVisit,
+}: {
+  currentFloor: number;
+  setFloorsToVisit: Dispatch<SetStateAction<ElevatorDirection[]>>;
+}) {
   return (
-    <Image
-      src={"/closed.jpg"}
-      width={100}
-      height={100}
-      alt={"Closed elevator"}
-    />
+    <div style={{ position: "relative" }}>
+      <Image src={"/open.jpg"} width={100} height={100} alt={"Open elevator"} />
+
+      <ElevatorControlPanel
+        currentFloor={currentFloor}
+        setFloorsToVisit={setFloorsToVisit}
+      />
+    </div>
+  );
+}
+
+function ElevatorClosed({ currentFloor }: { currentFloor: number }) {
+  return (
+    <div style={{ position: "relative" }}>
+      <Image
+        src={"/closed.jpg"}
+        width={100}
+        height={100}
+        alt={"Closed elevator"}
+      />
+      <span
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate( -50%, -50% )",
+          textAlign: "center",
+          backgroundColor: "lightgrey",
+          borderRadius: "10%",
+        }}
+      >
+        Floor {currentFloor}
+      </span>
+    </div>
   );
 }
 
@@ -147,30 +227,35 @@ function Door({
   return (
     <div className={styles.elevator_container}>
       {carLevel == doorLevel && floorsToVisit[carLevel] & elevatorDirection ? (
-        <ElevatorOpen />
+        <ElevatorOpen
+          currentFloor={doorLevel}
+          setFloorsToVisit={setFloorsToVisit}
+        />
       ) : (
-        <ElevatorClosed />
+        <ElevatorClosed currentFloor={doorLevel} />
       )}
+
       <ButtonPanel
         floorLevel={doorLevel}
         carLevel={carLevel}
         elevatorDirection={elevatorDirection}
         setFloorsToVisit={setFloorsToVisit}
       />
-      <span>Floor {doorLevel}</span>
     </div>
   );
 }
 
-function ElevatorShaft() {
-  const [elevatorCurrentFloor, setElevatorCurrentFloor] = useState(0);
-  const [elevatorDirection, setElevatorDirection] = useState<ElevatorDirection>(
-    ElevatorDirection.Both
-  );
-  const [floorsToVisit, setFloorsToVisit] = useState<ElevatorDirection[]>(
-    Array(floorCount).fill(ElevatorDirection.None)
-  );
-
+function ElevatorShaft({
+  elevatorCurrentFloor,
+  elevatorDirection,
+  setFloorsToVisit,
+  floorsToVisit,
+}: {
+  elevatorCurrentFloor: number;
+  elevatorDirection: ElevatorDirection;
+  setFloorsToVisit: Dispatch<SetStateAction<ElevatorDirection[]>>;
+  floorsToVisit: ElevatorDirection[];
+}) {
   const doors = [];
 
   for (let i = floorCount - 1; i >= 0; i--) {
@@ -188,6 +273,19 @@ function ElevatorShaft() {
   assert(doors.length === floorCount);
   assert(elevatorDirection !== ElevatorDirection.None);
 
+  return <div>{doors}</div>;
+}
+
+function ElevatorShaftContainer() {
+  const [elevatorCurrentFloor, setElevatorCurrentFloor] = useState(0);
+  const [elevatorDirection, setElevatorDirection] = useState<ElevatorDirection>(
+    ElevatorDirection.Both
+  );
+  const [floorsToVisit, setFloorsToVisit] = useState<ElevatorDirection[]>(
+    Array(floorCount).fill(ElevatorDirection.None)
+  );
+
+  // Check if there are floors above the current floor that need to be visited
   function checkFloorsAbove() {
     for (let i = elevatorCurrentFloor + 1; i < floorCount; i++) {
       if (floorsToVisit[i]) {
@@ -197,6 +295,7 @@ function ElevatorShaft() {
     return false;
   }
 
+  // Check if there are floors below the current floor that need to be visited
   function checkFloorsBelow() {
     for (let i = elevatorCurrentFloor - 1; i >= 0; i--) {
       if (floorsToVisit[i]) {
@@ -247,15 +346,22 @@ function ElevatorShaft() {
     moveElevator();
   }, 2000);
 
-  return <div>{doors}</div>;
+  return (
+    <ElevatorShaft
+      elevatorCurrentFloor={elevatorCurrentFloor}
+      elevatorDirection={elevatorDirection}
+      setFloorsToVisit={setFloorsToVisit}
+      floorsToVisit={floorsToVisit}
+    />
+  );
 }
 
 export default function Home() {
   return (
     <main className={styles.main}>
-      <ElevatorShaft />
-      <ElevatorShaft />
-      <ElevatorShaft />
+      <ElevatorShaftContainer />
+      <ElevatorShaftContainer />
+      <ElevatorShaftContainer />
     </main>
   );
 }
